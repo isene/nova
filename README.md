@@ -1,54 +1,76 @@
 # Nova
 
-![Rust](https://img.shields.io/badge/language-Rust-f74c00) ![License](https://img.shields.io/badge/license-Unlicense-green)
+![Rust](https://img.shields.io/badge/language-Rust-f74c00)
+![License](https://img.shields.io/badge/license-Unlicense-green)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue)
 
-Terminal panel for amateur astronomers. Weather forecast, ephemeris, astronomical events — decides whether it's worth taking the telescope out tonight.
+Terminal panel for amateur astronomers. Weather forecast, ephemeris, astronomical events, starchart, APOD. Decides whether it's worth taking the telescope out tonight.
 
 Rust feature port of [astropanel](https://github.com/isene/astropanel), built on [crust](https://github.com/isene/crust). Shares the ephemeris engine with [tock](https://github.com/isene/tock).
 
-## Install
+## Quick Start
 
 ```bash
-# Build from source
+# Download from releases (Linux/macOS, x86_64/aarch64)
+# Or build from source:
 git clone https://github.com/isene/nova
 cd nova
 cargo build --release
 
-# Or download prebuilt binary from releases (Linux/macOS, x86_64/aarch64)
+# Run (first launch prompts for location)
+./target/release/nova
 ```
 
-## Usage
+Press `?` inside the app for the full keybinding reference.
 
-```bash
-nova
-```
+## Features
 
-First run creates `~/.nova/config.yml` with Oslo defaults. Edit it to set your location, or press `l` inside the app.
+- **9-day weather forecast** from [met.no](https://api.met.no/) with hourly detail, cached 3 hours
+- **Condition scoring** (green/yellow/red) per your cloud/humidity/temperature/wind limits
+- **Visibility bars** for Sun, Moon, and planets, one bar per hour, one column per body
+- **Moon phase** shown as a graded gray intensity (new = dark, full = bright) on the Moon bar
+- **Ephemeris table** (RA, Dec, distance, rise, transit, set) for all 9 bodies, IAU 2006 standard
+- **Astronomical events** from [in-the-sky.org](https://in-the-sky.org) RSS, shown in-line with the hour bracket
+- **Starchart** from Stelvision for the selected hour (cached per slot)
+- **Astronomy Picture of the Day** (NASA APOD) cached per day
+- **Inline image display** via kitty/sixel/w3m protocols using [glow](https://github.com/isene/glow)
+- **Julian Date** in the header
+- **Bortle scale** field for site quality tracking
+- **Async fetches** — background threads load events and images without blocking the UI
 
 ## Keys
 
 | Key | Action |
 |---|---|
-| `j` / `DOWN` | Next day |
-| `k` / `UP` | Previous day |
-| `0` / `HOME` | Jump to today |
-| `r` | Reload weather (from cache if < 3h old) |
-| `R` | Force re-fetch weather |
-| `l` | Set location (`Name lat,lon`) |
+| `?` | Help |
+| `UP` / `DOWN` | Move row |
+| `PgUP` / `PgDOWN` | Page |
+| `HOME` / `END` | First / last row |
+| `ENTER` | Refresh / redraw current image |
+| `r` | Redraw all panes |
+| `R` | Refetch weather + events |
+| `l` | Location name |
+| `a` | Latitude |
+| `o` | Longitude |
 | `c` | Cloud limit % |
 | `h` | Humidity limit % |
-| `t` | Temperature lower limit °C |
+| `t` | Temp lower limit °C |
 | `w` | Wind limit m/s |
+| `b` | Bortle scale (1-9) |
+| `e` | Show all upcoming events |
+| `s` | Starchart for selected hour |
+| `S` | Open starchart in system image viewer |
+| `A` | Astronomy Picture of the Day |
 | `W` | Save config |
-| `?` | Help |
-| `q` / `ESC` | Quit |
+| `q` | Quit |
 
 ## Configuration
 
-`~/.nova/config.yml` (YAML):
+`~/.nova/config.yml` (auto-created on first run; first-launch prompts for location):
 
 ```yaml
 location: Oslo
+tz_name: Europe/Oslo
 lat: 59.91
 lon: 10.75
 tz: 1.0
@@ -56,17 +78,26 @@ cloud_limit: 40
 humidity_limit: 80.0
 temp_limit: -10.0
 wind_limit: 8.0
+bortle: 4.0
 show_planets: true
 show_events: true
 ```
 
-Weather cache lives at `~/.nova/weather_cache.json` (TTL 3 hours).
+- `location`: Display name shown in the header.
+- `tz_name`: IANA timezone used for the in-the-sky.org events feed (Cont/City format).
+- `lat` / `lon`: Observer position in degrees.
+- `tz`: UTC offset in hours (e.g. `1.0` for CET, `-5.0` for EST).
+- `cloud_limit`, `humidity_limit`, `temp_limit`, `wind_limit`: Thresholds for condition coloring.
+- `bortle`: Light-pollution class for your site (1 = darkest, 9 = inner-city).
 
-## Condition rules
+Weather cache: `~/.nova/weather_cache.json` (TTL 3 hours).
+Image cache: `~/.nova/images/` (APOD per day, starchart per slot; cleaned to ~50 entries).
 
-Following astropanel's scoring. Each day gets "negative points":
+## Condition Rules
 
-- 2 points if cloud cover exceeds cloud_limit
+Each hour gets "negative points" based on your limits:
+
+- 2 points if cloud cover > cloud_limit
 - +1 point if cloud cover > (100 - cloud_limit)/2
 - +1 point if cloud cover > 90%
 - +1 point if humidity > humidity_limit
@@ -77,10 +108,13 @@ Following astropanel's scoring. Each day gets "negative points":
 
 **0-1 = GOOD (green), 2-3 = FAIR (yellow), 4+ = BAD (red).**
 
-## Data sources
+## Data Sources
 
 - **Weather**: [api.met.no](https://api.met.no/) (Norwegian Meteorological Institute)
-- **Ephemeris**: IAU 2006 obliquity standard, ported from [ruby-ephemeris](https://github.com/isene/ephemeris)
+- **Events**: [in-the-sky.org](https://in-the-sky.org/rss.php) RSS feed
+- **Starchart**: [stelvision.com](https://www.stelvision.com/carte-ciel/)
+- **APOD**: [apod.nasa.gov](https://apod.nasa.gov/)
+- **Ephemeris**: Port of [ruby-ephemeris](https://github.com/isene/ephemeris), IAU 2006 obliquity standard
 
 ## Part of the Rust Terminal Suite (Fe2O3)
 

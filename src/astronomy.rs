@@ -111,6 +111,16 @@ impl Ephemeris {
             w: 339.3939 + 2.97661e-5 * d, a: 9.55475, e: 0.055546 - 9.499e-9 * d,
             m: 316.9670 + 0.0334442282 * d,
         });
+        bodies.insert("uranus", OrbitalElements {
+            n: 74.0005 + 1.3978e-5 * d, i: 0.7733 + 1.9e-8 * d,
+            w: 96.6612 + 3.0565e-5 * d, a: 19.18171 - 1.55e-8 * d,
+            e: 0.047318 + 7.45e-9 * d, m: 142.5905 + 0.011725806 * d,
+        });
+        bodies.insert("neptune", OrbitalElements {
+            n: 131.7806 + 3.0173e-5 * d, i: 1.7700 - 2.55e-7 * d,
+            w: 272.8461 - 6.027e-6 * d, a: 30.05826 + 3.313e-8 * d,
+            e: 0.008606 + 2.15e-9 * d, m: 260.2471 + 0.005995147 * d,
+        });
 
         let jupiter_m = (19.8950 + 0.0830853001 * d) % 360.0;
         let saturn_m = (316.9670 + 0.0334442282 * d) % 360.0;
@@ -297,6 +307,11 @@ fn julian_date(y: i32, m: u32, d: u32) -> f64 {
         + ((275.0 * m) / 9.0).floor() + d + 1_721_013.5
 }
 
+/// Julian Date including fractional day from the current time.
+pub fn julian_date_now(y: i32, m: u32, d: u32, hour: u32, minute: u32, sec: u32) -> f64 {
+    julian_date(y, m, d) + (hour as f64 * 3600.0 + minute as f64 * 60.0 + sec as f64) / 86400.0
+}
+
 // ── Moon phase ──────────────────────────────────────────────────────
 
 pub fn moon_phase(year: i32, month: u32, day: u32) -> MoonPhase {
@@ -400,6 +415,212 @@ pub fn moon_times(year: i32, month: u32, day: u32, lat: f64, lon: f64, tz: f64) 
 
 /// Returns planets visible at night (altitude > 5 degrees at any hour 20:00-04:00).
 /// Uses the same algorithm as Timely's ruby-ephemeris integration.
+// ── Body constants (astropanel-compatible) ──────────────────────────
+
+pub const BODY_ORDER: &[&str] = &[
+    "sun", "moon", "mercury", "venus", "mars",
+    "jupiter", "saturn", "uranus", "neptune",
+];
+
+pub fn body_symbol(name: &str) -> &'static str {
+    match name {
+        "sun" => "\u{2600}", "moon" => "\u{263E}", "mercury" => "\u{263F}",
+        "venus" => "\u{2640}", "mars" => "\u{2642}", "jupiter" => "\u{2643}",
+        "saturn" => "\u{2644}", "uranus" => "\u{2645}", "neptune" => "\u{2646}",
+        _ => "?",
+    }
+}
+
+pub fn body_color_hex(name: &str) -> &'static str {
+    match name {
+        "sun" => "FFD700", "moon" => "888888", "mercury" => "8F6E54",
+        "venus" => "E6B07C", "mars" => "BC2732", "jupiter" => "C08040",
+        "saturn" => "E8D9A0", "uranus" => "80DFFF", "neptune" => "1E90FF",
+        _ => "FFFFFF",
+    }
+}
+
+pub fn body_color_256(name: &str) -> u8 {
+    match name {
+        "sun" => 220, "moon" => 248, "mercury" => 137,
+        "venus" => 216, "mars" => 196, "jupiter" => 208,
+        "saturn" => 229, "uranus" => 117, "neptune" => 33,
+        _ => 255,
+    }
+}
+
+pub fn body_display(name: &str) -> &'static str {
+    match name {
+        "sun" => "Sun", "moon" => "Moon", "mercury" => "Mercury",
+        "venus" => "Venus", "mars" => "Mars", "jupiter" => "Jupiter",
+        "saturn" => "Saturn", "uranus" => "Uranus", "neptune" => "Neptune",
+        _ => "?",
+    }
+}
+
+/// All-body ephemeris data for a given date and location.
+#[derive(Clone, Debug)]
+pub struct BodyObs {
+    pub name: &'static str,
+    pub ra_deg: f64,
+    pub dec_deg: f64,
+    pub distance: f64,
+    pub rise: String,
+    pub transit: String,
+    pub set: String,
+    /// rise hour in fractional hours (None if "always" or "never")
+    pub rise_h: Option<f64>,
+    pub set_h: Option<f64>,
+    pub always_up: bool,
+    pub never_up: bool,
+}
+
+fn parse_hhmm(s: &str) -> Option<f64> {
+    if s.len() < 5 { return None; }
+    let h: f64 = s[..2].parse().ok()?;
+    let m: f64 = s[3..5].parse().ok()?;
+    Some(h + m / 60.0)
+}
+
+pub fn all_bodies(year: i32, month: u32, day: u32, lat: f64, lon: f64, tz: f64) -> Vec<BodyObs> {
+    let eph = Ephemeris::new(year, month, day, lat, lon, tz);
+    let mut out = Vec::with_capacity(BODY_ORDER.len());
+    for &name in BODY_ORDER {
+        let (ra, dec, dist, _, _) = eph.body_calc(name);
+        let (rise, transit, set) = eph.rts(ra, dec);
+        let always_up = rise == "always";
+        let never_up = rise == "never";
+        let rise_h = if always_up || never_up { None } else { parse_hhmm(&rise) };
+        let set_h = if always_up || never_up { None } else { parse_hhmm(&set) };
+        let name_s: &'static str = match name {
+            "sun" => "sun", "moon" => "moon", "mercury" => "mercury",
+            "venus" => "venus", "mars" => "mars", "jupiter" => "jupiter",
+            "saturn" => "saturn", "uranus" => "uranus", "neptune" => "neptune",
+            _ => "?",
+        };
+        out.push(BodyObs {
+            name: name_s, ra_deg: ra, dec_deg: dec, distance: dist,
+            rise, transit, set, rise_h, set_h, always_up, never_up,
+        });
+    }
+    out
+}
+
+/// Is a body above the horizon at the given local hour?
+/// Uses rise/set hours from all_bodies result.
+pub fn is_above(rise_h: Option<f64>, set_h: Option<f64>, always_up: bool, never_up: bool, hour: f64) -> bool {
+    if always_up { return true; }
+    if never_up { return false; }
+    match (rise_h, set_h) {
+        (Some(r), Some(s)) => {
+            if r > s { hour >= r || hour <= s }
+            else { hour >= r && hour <= s }
+        }
+        _ => false,
+    }
+}
+
+fn ra_to_hm(ra_deg: f64) -> String {
+    let mut h = ra_deg / 15.0;
+    if h < 0.0 { h += 24.0; }
+    let hh = h.floor() as i32;
+    let mm = ((h - hh as f64) * 60.0).round() as i32;
+    let (hh, mm) = if mm >= 60 { ((hh + 1) % 24, 0) } else { (hh, mm) };
+    format!("{:02}h {:02}m", hh, mm)
+}
+
+fn dec_to_dm(dec_deg: f64) -> String {
+    let sign = if dec_deg < 0.0 { "-" } else { "+" };
+    let d = dec_deg.abs();
+    let dd = d.floor() as i32;
+    let mm = ((d - dd as f64) * 60.0).round() as i32;
+    let (dd, mm) = if mm >= 60 { (dd + 1, 0) } else { (dd, mm) };
+    format!("{}{:02}\u{00B0} {:02}\u{2032}", sign, dd, mm)
+}
+
+fn format_distance(d: f64) -> String {
+    // 4 decimals, two-digit integer part where possible
+    format!("{:7.4}", d)
+}
+
+/// Formatted ephemeris table (matches astropanel's layout).
+/// Returns a multi-line string with ANSI colors for each body.
+pub fn ephemeris_table(bodies: &[BodyObs]) -> String {
+    let mut out = String::new();
+    out.push_str("Planet      \u{2502} RA       \u{2502} Dec      \u{2502} d=AU   \u{2502} Rise  \u{2502} Trans \u{2502} Set\n");
+    out.push_str("\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{253C}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{253C}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{253C}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{253C}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{253C}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{253C}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\n");
+    for b in bodies {
+        let color = body_color_256(b.name);
+        let name = format!("{} {}", body_symbol(b.name), capitalize_short(b.name));
+        let name = format!("{:<11}", name);
+        let ra_s = ra_to_hm(b.ra_deg);
+        let dec_s = dec_to_dm(b.dec_deg);
+        let d_s = format_distance(b.distance);
+        let hhmm = |s: &str| -> String {
+            if s.len() >= 5 { s[..5].to_string() } else { s.to_string() }
+        };
+        let rise = hhmm(&b.rise);
+        let trans = hhmm(&b.transit);
+        let set = hhmm(&b.set);
+        let colored = |s: &str| -> String {
+            format!("\x1b[38;5;{}m{}\x1b[0m", color, s)
+        };
+        out.push_str(&format!(
+            "{} \u{2502} {} \u{2502} {} \u{2502} {} \u{2502} {} \u{2502} {} \u{2502} {}\n",
+            colored(&name),
+            colored(&ra_s),
+            colored(&format!("{:<8}", dec_s)),
+            colored(&d_s),
+            colored(&format!("{:<5}", rise)),
+            colored(&format!("{:<5}", trans)),
+            colored(&format!("{:<5}", set)),
+        ));
+    }
+    out
+}
+
+fn capitalize_short(name: &str) -> &'static str {
+    // Match Ruby astropanel's 8-char-max labels
+    match name {
+        "sun" => "Sun", "moon" => "Moon", "mercury" => "Mercury",
+        "venus" => "Venus", "mars" => "Mars", "jupiter" => "Jupiter",
+        "saturn" => "Saturn", "uranus" => "Uranus", "neptune" => "Neptune",
+        _ => "?",
+    }
+}
+
+/// Moon phase percent (0..100), useful for coloring visibility bars.
+pub fn moon_phase_pct(year: i32, month: u32, day: u32) -> u8 {
+    let mp = moon_phase(year, month, day);
+    (mp.illumination * 100.0).round() as u8
+}
+
+/// Gray hex code for moon visibility block, based on illumination pct (0-100).
+pub fn moon_phase_gray(pct: u8) -> String {
+    let min: u8 = 0x22;
+    let v = (min as u16 + ((0xFF - min as u16) * pct as u16) / 100) as u8;
+    format!("{:02x}{:02x}{:02x}", v, v, v)
+}
+
+/// Map hex color to nearest 256-color index for terminal output. Quick/dirty.
+pub fn hex_to_256(hex: &str) -> u8 {
+    if hex.len() < 6 { return 255; }
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+    // Grayscale detection
+    if (r as i32 - g as i32).abs() < 8 && (g as i32 - b as i32).abs() < 8 {
+        let gray = ((r as u32 + g as u32 + b as u32) / 3) as u8;
+        if gray < 8 { return 16; }
+        if gray > 248 { return 231; }
+        return 232 + (gray - 8) / 10;
+    }
+    let conv = |c: u8| -> u8 {
+        if c < 48 { 0 } else if c < 115 { 1 } else { ((c - 35) / 40).min(5) }
+    };
+    16 + 36 * conv(r) + 6 * conv(g) + conv(b)
+}
+
 pub fn visible_planets(year: i32, month: u32, day: u32, lat: f64, lon: f64, tz: f64) -> Vec<VisiblePlanet> {
     let eph = Ephemeris::new(year, month, day, lat, lon, tz);
 

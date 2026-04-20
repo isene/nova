@@ -15,6 +15,8 @@ pub fn ensure_dir() {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Config {
     pub location: String,
+    #[serde(default = "default_tz_name")]
+    pub tz_name: String,
     pub lat: f64,
     pub lon: f64,
     pub tz: f64,
@@ -26,6 +28,8 @@ pub struct Config {
     pub temp_limit: f64,
     #[serde(default = "default_wind")]
     pub wind_limit: f64,
+    #[serde(default = "default_bortle")]
+    pub bortle: f64,
     #[serde(default = "default_true")]
     pub show_planets: bool,
     #[serde(default = "default_true")]
@@ -36,12 +40,15 @@ fn default_cloud() -> i64 { 40 }
 fn default_humidity() -> f64 { 80.0 }
 fn default_temp() -> f64 { -10.0 }
 fn default_wind() -> f64 { 8.0 }
+fn default_bortle() -> f64 { 4.0 }
+fn default_tz_name() -> String { "Europe/Oslo".into() }
 fn default_true() -> bool { true }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             location: "Oslo".into(),
+            tz_name: default_tz_name(),
             lat: 59.91,
             lon: 10.75,
             tz: 1.0,
@@ -49,6 +56,7 @@ impl Default for Config {
             humidity_limit: default_humidity(),
             temp_limit: default_temp(),
             wind_limit: default_wind(),
+            bortle: default_bortle(),
             show_planets: true,
             show_events: true,
         }

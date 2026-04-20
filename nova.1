@@ -1,0 +1,176 @@
+.TH NOVA 1 "April 2026" "nova" "User Commands"
+.SH NAME
+nova \- terminal panel for amateur astronomers
+.SH SYNOPSIS
+.B nova
+.SH DESCRIPTION
+.B nova
+is a terminal panel showing weather forecast, ephemeris, astronomical
+events, and sky imagery, designed to help amateur astronomers decide
+whether it is worth setting up the telescope tonight.
+.PP
+Rust feature port of astropanel. Built on Crust. Shares the ephemeris
+engine with Tock.
+.SH FIRST RUN
+On first launch, nova prompts interactively for:
+.IP \[bu] 2
+Display location name
+.IP \[bu] 2
+IANA timezone (Cont/City) for the events feed
+.IP \[bu] 2
+Latitude and longitude
+.IP \[bu] 2
+UTC offset in hours
+.IP \[bu] 2
+Observation limits (cloud, humidity, temp, wind)
+.IP \[bu] 2
+Bortle scale for your site
+.PP
+Responses are saved to
+.IR ~/.nova/config.yml
+and can be re-edited from the running app (see KEYS).
+.SH PANES
+.TP
+.B Header (row 1)
+Column legend and body symbols, location, timezone, lat/lon, Bortle,
+last-updated time, and current Julian Date.
+.TP
+.B Titles (row 2)
+Limit markers (<40% cloud, <80% humidity, >-10°C temperature, <8m/s
+wind), column ruler for the 9 bodies, selected date/weekday/hour,
+and current moon phase name + illumination percent.
+.TP
+.B Left pane
+Hourly weather rows for the next ~9 days. Each row is color-coded
+green/yellow/red by condition score, followed by a visibility-bar
+column for each of Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn,
+Uranus, Neptune. Moon bar intensity tracks phase illumination.
+An exclamation mark on a row indicates an astronomical event in that
+hour bracket.
+.TP
+.B Main pane
+Weather detail for the selected hour, full ephemeris table, the
+event description (colored by condition), and the starchart / APOD
+image when available.
+.TP
+.B Footer
+Keybinding hint bar.
+.SH KEYS
+.TP
+.B ?
+Show help overlay.
+.TP
+.B UP / DOWN
+Move selection by one hour.
+.TP
+.B PgUP / PgDOWN
+Move by one page.
+.TP
+.B HOME / END
+Jump to first / last hour.
+.TP
+.B ENTER
+Refresh the currently displayed image (starchart or APOD).
+.TP
+.B r
+Redraw all panes.
+.TP
+.B R
+Refetch weather + events (bypasses cache).
+.TP
+.B l
+Edit location name.
+.TP
+.B a
+Edit latitude.
+.TP
+.B o
+Edit longitude.
+.TP
+.B c
+Edit cloud limit.
+.TP
+.B h
+Edit humidity limit.
+.TP
+.B t
+Edit lower temperature limit.
+.TP
+.B w
+Edit wind limit.
+.TP
+.B b
+Edit Bortle scale.
+.TP
+.B e
+Show all upcoming events in the main pane.
+.TP
+.B s
+Fetch starchart for the selected hour (lat > 23 only).
+.TP
+.B S
+Open the starchart JPG in the system image viewer (xdg-open).
+.TP
+.B A
+Show Astronomy Picture of the Day.
+.TP
+.B W
+Save config to disk.
+.TP
+.B q
+Quit.
+.SH CONDITION SCORING
+Each hour row is given "negative points":
+.IP \[bu] 2
++2 if cloud cover > cloud_limit
+.IP \[bu] 2
++1 if cloud cover > (100 - cloud_limit)/2
+.IP \[bu] 2
++1 if cloud cover > 90%
+.IP \[bu] 2
++1 if humidity > humidity_limit
+.IP \[bu] 2
++1 if temperature < temp_limit
+.IP \[bu] 2
++1 if temperature < temp_limit - 7\u{00B0}C
+.IP \[bu] 2
++1 if wind > wind_limit
+.IP \[bu] 2
++1 if wind > 2 * wind_limit
+.PP
+0-1 points = GOOD (green), 2-3 = FAIR (yellow), 4+ = BAD (red).
+.SH FILES
+.TP
+.I ~/.nova/config.yml
+User configuration.
+.TP
+.I ~/.nova/weather_cache.json
+Cached weather forecast (3-hour TTL).
+.TP
+.I ~/.nova/images/
+Cached APOD (per UTC day) and starchart images (per date/hour/location).
+.SH DATA SOURCES
+.IP \[bu] 2
+Weather: api.met.no (Norwegian Meteorological Institute)
+.IP \[bu] 2
+Events: in-the-sky.org RSS feed
+.IP \[bu] 2
+Starchart: stelvision.com
+.IP \[bu] 2
+APOD: apod.nasa.gov
+.IP \[bu] 2
+Ephemeris: IAU 2006 obliquity standard, ported from ruby-ephemeris.
+.SH ENVIRONMENT
+.TP
+.B HOME
+Base for the \fI~/.nova\fR config and cache directory.
+.SH AUTHOR
+Geir Isene <g@isene.com>
+.SH SEE ALSO
+.BR pointer (1),
+.BR kastrup (1),
+.BR rush (1),
+.BR scroll (1),
+.BR tock (1)
+.PP
+Project home: https://github.com/isene/nova

@@ -10,17 +10,31 @@ pub struct HourPoint {
     pub time: String,
     pub date: String,
     pub hour: i64,
+    pub hour_str: String,       // "HH" zero-padded
     pub temp: f64,
     pub wind: f64,
     pub gust: f64,
+    pub wind_dir: i64,
+    pub wind_dir_name: String,
     pub cloud: i64,
+    pub cloud_low: i64,
+    pub cloud_high: i64,
     pub fog: f64,
     pub humidity: f64,
     pub dew_point: f64,
     pub pressure: f64,
     pub uv: f64,
     pub precip: f64,
-    pub symbol: String,
+    pub symbol: String,         // met.no symbol code like "partlycloudy_day"
+}
+
+pub fn wind_dir_name(deg: i64) -> &'static str {
+    let idx = ((deg.rem_euclid(360)) / 45) as usize;
+    match idx {
+        0 => "N", 1 => "NE", 2 => "E", 3 => "SE",
+        4 => "S", 5 => "SW", 6 => "W", 7 => "NW",
+        _ => "N",
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -103,9 +117,11 @@ fn serialize_day(d: &DayForecast) -> JsonValue {
         "humidity": d.humidity,
         "symbol": d.symbol,
         "hours": d.hours.iter().map(|h| serde_json::json!({
-            "time": h.time, "date": h.date, "hour": h.hour,
+            "time": h.time, "date": h.date, "hour": h.hour, "hour_str": h.hour_str,
             "temp": h.temp, "wind": h.wind, "gust": h.gust,
-            "cloud": h.cloud, "fog": h.fog, "humidity": h.humidity,
+            "wind_dir": h.wind_dir, "wind_dir_name": h.wind_dir_name,
+            "cloud": h.cloud, "cloud_low": h.cloud_low, "cloud_high": h.cloud_high,
+            "fog": h.fog, "humidity": h.humidity,
             "dew_point": h.dew_point, "pressure": h.pressure,
             "uv": h.uv, "precip": h.precip, "symbol": h.symbol,
         })).collect::<Vec<_>>(),
@@ -118,14 +134,21 @@ fn parse_day(v: &JsonValue) -> Option<DayForecast> {
     let mut hours = Vec::with_capacity(hours_arr.len());
     for h in hours_arr {
         let ho = h.as_object()?;
+        let hour: i64 = ho.get("hour")?.as_i64()?;
         hours.push(HourPoint {
             time: ho.get("time")?.as_str()?.to_string(),
             date: ho.get("date")?.as_str()?.to_string(),
-            hour: ho.get("hour")?.as_i64()?,
+            hour,
+            hour_str: ho.get("hour_str").and_then(|v| v.as_str()).map(|s| s.to_string())
+                .unwrap_or_else(|| format!("{:02}", hour)),
             temp: ho.get("temp")?.as_f64()?,
             wind: ho.get("wind")?.as_f64()?,
             gust: ho.get("gust")?.as_f64()?,
+            wind_dir: ho.get("wind_dir").and_then(|v| v.as_i64()).unwrap_or(0),
+            wind_dir_name: ho.get("wind_dir_name").and_then(|v| v.as_str()).unwrap_or("N").to_string(),
             cloud: ho.get("cloud")?.as_i64()?,
+            cloud_low: ho.get("cloud_low").and_then(|v| v.as_i64()).unwrap_or(0),
+            cloud_high: ho.get("cloud_high").and_then(|v| v.as_i64()).unwrap_or(0),
             fog: ho.get("fog")?.as_f64()?,
             humidity: ho.get("humidity")?.as_f64()?,
             dew_point: ho.get("dew_point")?.as_f64()?,
@@ -208,14 +231,20 @@ pub fn fetch_weather(lat: f64, lon: f64) -> Vec<DayForecast> {
             .map(|s| s.to_string())
             .unwrap_or_else(|| "fair".into());
 
+        let wind_dir = f("wind_from_direction") as i64;
         by_date.entry(date.clone()).or_default().push(HourPoint {
             time: time.clone(),
             date: date.clone(),
             hour,
+            hour_str: format!("{:02}", hour),
             temp: f("air_temperature"),
             wind: f("wind_speed"),
             gust: f("wind_speed_of_gust"),
+            wind_dir,
+            wind_dir_name: wind_dir_name(wind_dir).to_string(),
             cloud,
+            cloud_low: f("cloud_area_fraction_low") as i64,
+            cloud_high: f("cloud_area_fraction_high") as i64,
             fog: f("fog_area_fraction"),
             humidity: f("relative_humidity"),
             dew_point: f("dew_point_temperature"),
