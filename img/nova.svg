@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#1a1a3e"/>
+      <stop offset="100%" style="stop-color:#05051a"/>
+    </radialGradient>
+    <radialGradient id="star" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="30%" style="stop-color:#ffe9a8"/>
+      <stop offset="70%" style="stop-color:#ff9030"/>
+      <stop offset="100%" style="stop-color:#f74c00" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rust" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f74c00"/>
+      <stop offset="100%" style="stop-color:#b7410e"/>
+    </linearGradient>
+  </defs>
+  <style>
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.05); } }
+    @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+    .core { transform-origin: 128px 128px; animation: pulse 3s ease-in-out infinite; }
+    .rays { transform-origin: 128px 128px; animation: rotate 120s linear infinite; }
+    .tw1 { animation: twinkle 2.5s ease-in-out infinite; }
+    .tw2 { animation: twinkle 2.5s ease-in-out 0.8s infinite; }
+    .tw3 { animation: twinkle 2.5s ease-in-out 1.6s infinite; }
+    .tw4 { animation: twinkle 2.5s ease-in-out 2.1s infinite; }
+    .tw5 { animation: twinkle 2.5s ease-in-out 1.2s infinite; }
+    .tw6 { animation: twinkle 2.5s ease-in-out 0.4s infinite; }
+  </style>
+
+  <!-- Night sky background -->
+  <circle cx="128" cy="128" r="120" fill="url(#sky)" stroke="url(#rust)" stroke-width="3"/>
+
+  <!-- Background stars -->
+  <circle class="tw1" cx="52" cy="60" r="1.5" fill="#ffffff"/>
+  <circle class="tw2" cx="210" cy="72" r="1.2" fill="#cfe8ff"/>
+  <circle class="tw3" cx="42" cy="170" r="1.8" fill="#ffffff"/>
+  <circle class="tw4" cx="200" cy="200" r="1.3" fill="#ffe9a8"/>
+  <circle class="tw5" cx="80" cy="210" r="1.1" fill="#cfe8ff"/>
+  <circle class="tw6" cx="220" cy="140" r="1.4" fill="#ffffff"/>
+  <circle class="tw2" cx="70" cy="95" r="0.9" fill="#ffffff"/>
+  <circle class="tw4" cx="190" cy="40" r="0.9" fill="#ffffff"/>
+  <circle class="tw3" cx="30" cy="120" r="0.9" fill="#ffffff"/>
+
+  <!-- Rotating diffraction rays -->
+  <g class="rays" opacity="0.7">
+    <line x1="128" y1="40"  x2="128" y2="216" stroke="url(#rust)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="40"  y1="128" x2="216" y2="128" stroke="url(#rust)" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+    <line x1="66"  y1="66"  x2="190" y2="190" stroke="url(#rust)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+    <line x1="190" y1="66"  x2="66"  y2="190" stroke="url(#rust)" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+  </g>
+
+  <!-- Outer halo -->
+  <circle cx="128" cy="128" r="60" fill="url(#star)" opacity="0.3"/>
+
+  <!-- Pulsing core with sharp star -->
+  <g class="core">
+    <!-- Soft glow -->
+    <circle cx="128" cy="128" r="38" fill="url(#star)" opacity="0.8"/>
+    <!-- Star shape: two overlapping diamonds -->
+    <polygon points="128,75 135,125 185,128 135,131 128,181 121,131 71,128 121,125"
+             fill="#ffffff" opacity="0.95"/>
+    <polygon points="128,95 131,125 161,128 131,131 128,161 125,131 95,128 125,125"
+             fill="#ffe9a8"/>
+    <!-- Bright center -->
+    <circle cx="128" cy="128" r="6" fill="#ffffff"/>
+  </g>
+</svg>

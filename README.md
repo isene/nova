@@ -1,12 +1,14 @@
-# Nova
+# Nova - Terminal Astronomy Panel
 
-![Rust](https://img.shields.io/badge/language-Rust-f74c00)
-![License](https://img.shields.io/badge/license-Unlicense-green)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue)
+<img src="img/nova.svg" align="left" width="150" height="150">
 
-Terminal panel for amateur astronomers. Weather forecast, ephemeris, astronomical events, starchart, APOD. Decides whether it's worth taking the telescope out tonight.
+![Rust](https://img.shields.io/badge/language-Rust-f74c00) ![License](https://img.shields.io/badge/license-Unlicense-green) ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-blue) ![Stay Amazing](https://img.shields.io/badge/Stay-Amazing-important)
+
+Terminal panel for amateur astronomers. Weather forecast, ephemeris, astronomical events, starchart, and NASA APOD in one TUI. Decides whether it is worth taking the telescope out tonight.
 
 Rust feature port of [astropanel](https://github.com/isene/astropanel), built on [crust](https://github.com/isene/crust). Shares the ephemeris engine with [tock](https://github.com/isene/tock).
+
+<br clear="left"/>
 
 ## Quick Start
 
