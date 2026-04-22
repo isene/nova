@@ -10,6 +10,12 @@ Rust feature port of [astropanel](https://github.com/isene/astropanel), built on
 
 <br clear="left"/>
 
+## Screenshot
+
+![Screenshot](img/screenshot.png)
+
+*Real-time astronomy panel: ephemeris, weather, starchart, and inline APOD.*
+
 ## Quick Start
 
 ```bash
