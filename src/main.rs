@@ -543,20 +543,28 @@ impl App {
         };
 
         let fog_s = if h.fog <= 0.0 { "-".into() } else { format!("{}%", h.fog as i64) };
-        let info = format!(
-            "Clouds:    {}% (low/high {}/{})\n\
-             Humidity:  {}% (fog {})\n\
-             Wind:      {} m/s dir {} gusts {}\n\
-             Temp:      {}\u{00B0}C (dew {}\u{00B0}C)\n\
-             Pressure:  {} hPa\n\
-             UV index:  {}\n",
-            h.cloud, h.cloud_low, h.cloud_high,
-            h.humidity as i64, fog_s,
-            h.wind, h.wind_dir_name, h.gust,
-            h.temp, h.dew_point,
-            h.pressure as i64,
-            if h.uv == 0.0 { "-".into() } else { format!("{:.1}", h.uv) },
-        );
+        let uv_s = if h.uv == 0.0 { "-".into() } else { format!("{:.1}", h.uv) };
+        // Compress the six weather lines into a 3x2 table so the
+        // (optional) starchart / APOD image doesn't crash into the text.
+        let left = [
+            format!("Clouds:    {}% (low/high {}/{})", h.cloud, h.cloud_low, h.cloud_high),
+            format!("Humidity:  {}% (fog {})", h.humidity as i64, fog_s),
+            format!("Wind:      {} m/s dir {} gusts {}", h.wind, h.wind_dir_name, h.gust),
+        ];
+        let right = [
+            format!("Temp:      {}\u{00B0}C (dew {}\u{00B0}C)", h.temp, h.dew_point),
+            format!("Pressure:  {} hPa", h.pressure as i64),
+            format!("UV index:  {}", uv_s),
+        ];
+        let col_w = left.iter().map(|s| s.chars().count()).max().unwrap_or(0) + 4;
+        let mut info = String::new();
+        for (l, r) in left.iter().zip(right.iter()) {
+            let pad = col_w.saturating_sub(l.chars().count());
+            info.push_str(l);
+            info.push_str(&" ".repeat(pad));
+            info.push_str(r);
+            info.push('\n');
+        }
 
         let mut buf = String::new();
         buf.push('\n'); // one row of padding above
