@@ -656,6 +656,92 @@ pub fn visible_planets(year: i32, month: u32, day: u32, lat: f64, lon: f64, tz: 
     visible
 }
 
+/// Locally-computed "tonight" summary for days with no notable
+/// astronomical event. Shows moon phase + rise/set, visible planets
+/// with rise/set times, constellations near the zenith for the date
+/// + hemisphere, and a one-line Bortle hint.
+pub fn tonight_summary(
+    year: i32, month: u32, day: u32,
+    lat: f64, lon: f64, tz: f64, bortle: f64,
+) -> String {
+    let mut out = String::new();
+    let mp = moon_phase(year, month, day);
+    let illum_pct = (mp.illumination * 100.0).round() as u32;
+    let (mrise, mset) = moon_times(year, month, day, lat, lon, tz)
+        .unwrap_or_else(|| ("--:--".into(), "--:--".into()));
+    out.push_str(&format!(
+        "Tonight: {} {} {}%, rises {} sets {}\n",
+        mp.symbol, mp.phase_name, illum_pct, mrise, mset,
+    ));
+
+    let planets = visible_planets(year, month, day, lat, lon, tz);
+    if planets.is_empty() {
+        out.push_str("Planets: none above 5° between 20:00 and 04:00\n");
+    } else {
+        out.push_str("Planets: ");
+        let parts: Vec<String> = planets.iter()
+            .map(|p| format!("{} {} (rises {} sets {})",
+                p.symbol, p.name, p.rise, p.set))
+            .collect();
+        out.push_str(&parts.join(", "));
+        out.push('\n');
+    }
+
+    let constellations = constellations_near_zenith(month, lat);
+    if !constellations.is_empty() {
+        out.push_str(&format!("Near zenith: {}\n", constellations.join(", ")));
+    }
+
+    out.push_str(&bortle_hint(bortle));
+    out
+}
+
+/// Northern-hemisphere zenith constellations by month (mid-northern
+/// latitudes). For southern hemisphere we shift by six months as a
+/// rough approximation; at low latitudes this is less meaningful but
+/// the names are still recognisable to the user.
+fn constellations_near_zenith(month: u32, lat: f64) -> Vec<&'static str> {
+    let northern = lat >= 0.0;
+    let m = if northern {
+        month
+    } else {
+        ((month + 5) % 12) + 1
+    };
+    match m {
+        1  => vec!["Orion", "Taurus", "Auriga", "Gemini"],
+        2  => vec!["Orion", "Canis Major", "Gemini", "Auriga"],
+        3  => vec!["Leo", "Cancer", "Gemini", "Hydra"],
+        4  => vec!["Leo", "Virgo", "Ursa Major"],
+        5  => vec!["Virgo", "Boötes", "Coma Berenices"],
+        6  => vec!["Boötes", "Hercules", "Corona Borealis"],
+        7  => vec!["Lyra", "Cygnus", "Hercules", "Scorpius"],
+        8  => vec!["Cygnus", "Lyra", "Aquila", "Sagittarius"],
+        9  => vec!["Pegasus", "Andromeda", "Cygnus", "Capricornus"],
+        10 => vec!["Pegasus", "Andromeda", "Pisces", "Aquarius"],
+        11 => vec!["Andromeda", "Triangulum", "Aries", "Perseus"],
+        12 => vec!["Taurus", "Orion", "Perseus", "Auriga"],
+        _  => vec![],
+    }
+}
+
+/// One-line Bortle-class hint about what's visible from the observer's
+/// site. Matches the user-configured Bortle rating in nova's config.
+fn bortle_hint(bortle: f64) -> &'static str {
+    let b = bortle.round() as i32;
+    match b {
+        1 => "Bortle 1 — pristine; zodiacal light, gegenschein, M33 naked-eye.\n",
+        2 => "Bortle 2 — truly dark; Milky Way structure obvious overhead.\n",
+        3 => "Bortle 3 — rural; Milky Way clear, M31 naked-eye.\n",
+        4 => "Bortle 4 — rural/suburban transition; Milky Way visible overhead.\n",
+        5 => "Bortle 5 — suburban; Milky Way faint near zenith only.\n",
+        6 => "Bortle 6 — bright suburban; Milky Way invisible, M31 with effort.\n",
+        7 => "Bortle 7 — suburban/urban transition; only the brightest stars.\n",
+        8 => "Bortle 8 — city; bright stars only, planets and Moon dominate.\n",
+        9 => "Bortle 9 — inner city; only Moon, planets, brightest stars.\n",
+        _ => "",
+    }
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 pub fn days_in_month(year: i32, month: u32) -> u32 {

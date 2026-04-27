@@ -578,6 +578,16 @@ impl App {
             buf.push('\n');
             buf.push_str(&style::fg(&ev.link, col));
             buf.push('\n');
+        } else {
+            // No notable astronomical event for this date — fall back to a
+            // locally-computed "tonight" summary so the user always sees
+            // something sky-relevant. Cheap (no network).
+            let (y, m, d) = parse_date(&h.date);
+            let summary = crate::astronomy::tonight_summary(
+                y, m, d, self.cfg.lat, self.cfg.lon, self.cfg.tz, self.cfg.bortle,
+            );
+            buf.push('\n');
+            buf.push_str(&style::fg(&summary, 245));
         }
 
         self.main_p.set_text(&buf);

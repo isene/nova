@@ -1,6 +1,6 @@
 [package]
 name = "nova"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Geir Isene <g@isene.com>"]
 description = "Terminal panel for amateur astronomers: weather, ephemeris, events. Feature clone of astropanel, built on crust."
