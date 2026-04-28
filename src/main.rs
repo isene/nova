@@ -1,4 +1,4 @@
-mod astronomy;
+
 mod config;
 mod date_util;
 mod events;
@@ -90,7 +90,7 @@ struct PlanetData {
     table: String,
     mphase: u8,
     mph_s: &'static str,
-    bodies: Vec<astronomy::BodyObs>,
+    bodies: Vec<orbit::BodyObs>,
 }
 
 struct App {
@@ -192,9 +192,9 @@ impl App {
         };
         for date in &dates {
             let (y, m, d) = parse_date(date);
-            let bodies = astronomy::all_bodies(y, m, d, self.cfg.lat, self.cfg.lon, self.cfg.tz);
-            let mph = astronomy::moon_phase(y, m, d);
-            let table = astronomy::ephemeris_table(&bodies);
+            let bodies = orbit::all_bodies(y, m, d, self.cfg.lat, self.cfg.lon, self.cfg.tz);
+            let mph = orbit::moon_phase(y, m, d);
+            let table = orbit::ephemeris_table(&bodies);
             self.planets.insert(date.clone(), PlanetData {
                 table,
                 mphase: (mph.illumination * 100.0).round() as u8,
@@ -365,8 +365,8 @@ impl App {
     }
 
     fn render_header(&mut self) {
-        let body_list: String = astronomy::BODY_ORDER.iter()
-            .map(|b| style::fg(astronomy::body_symbol(b), astronomy::body_color_256(b)))
+        let body_list: String = orbit::BODY_ORDER.iter()
+            .map(|b| style::fg(orbit::body_symbol(b), orbit::body_color_256(b)))
             .collect::<Vec<_>>().join(" ");
         let cols_header = format!(
             " YYYY-MM-DD  HH   Cld    Hum    Temp     Wind   ! {}      ",
@@ -375,7 +375,7 @@ impl App {
         let (y, m, d) = self.today;
         let local = date_util::now_secs() + date_util::local_tz_offset_secs();
         let (_, _, _, hh, mm, ss) = date_util::ts_to_parts(local);
-        let jd = astronomy::julian_date_now(y, m, d, hh, mm, ss);
+        let jd = orbit::julian_date_now(y, m, d, hh, mm, ss);
         let right = format!(
             "{} tz{:+} ({}/{})  Bortle {:.1}  Updated {}  JD:{:.5}",
             self.cfg.location,
@@ -496,19 +496,19 @@ impl App {
 
             // Visibility bars for each body
             if let Some(pd) = self.planets.get(&h.date) {
-                for (j, body) in astronomy::BODY_ORDER.iter().enumerate() {
+                for (j, body) in orbit::BODY_ORDER.iter().enumerate() {
                     let block_char = if j < 2 { "\u{2588}" } else { "\u{2503}" };
                     let above = pd.bodies.iter()
                         .find(|b| b.name == *body)
-                        .map(|b| astronomy::is_above(b.rise_h, b.set_h, b.always_up, b.never_up, h.hour as f64))
+                        .map(|b| orbit::is_above(b.rise_h, b.set_h, b.always_up, b.never_up, h.hour as f64))
                         .unwrap_or(false);
                     if above {
                         let color_hex = if *body == "moon" {
-                            astronomy::moon_phase_gray(pd.mphase)
+                            orbit::moon_phase_gray(pd.mphase)
                         } else {
-                            astronomy::body_color_hex(body).to_string()
+                            orbit::body_color_hex(body).to_string()
                         };
-                        let c = astronomy::hex_to_256(&color_hex);
+                        let c = orbit::hex_to_256(&color_hex);
                         row.push(' ');
                         row.push_str(&style::fg(block_char, c));
                     } else {
@@ -591,7 +591,7 @@ impl App {
             // locally-computed "tonight" summary so the user always sees
             // something sky-relevant. Cheap (no network).
             let (y, m, d) = parse_date(&h.date);
-            let summary = crate::astronomy::tonight_summary(
+            let summary = orbit::tonight_summary(
                 y, m, d, self.cfg.lat, self.cfg.lon, self.cfg.tz, self.cfg.bortle,
             );
             buf.push('\n');
